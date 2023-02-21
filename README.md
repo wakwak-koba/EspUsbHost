@@ -6,6 +6,7 @@ This is a library for using USB Host with ESP32.
 
 ## function
 - USB Keybord
+- USB Serial
 
 ## Usage
 ```c

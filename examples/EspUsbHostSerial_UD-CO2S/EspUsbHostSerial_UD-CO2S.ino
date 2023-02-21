@@ -1,5 +1,4 @@
 #include "EspUsbHostSerial.h"
-#include "unicodeConverter.h"
 
 class UDCO2S : public EspUsbHostSerial {
 public:
