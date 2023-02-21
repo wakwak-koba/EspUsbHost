@@ -40,12 +40,14 @@ void EspUsbHost::_clientEventCallback(const usb_host_client_event_msg_t *eventMs
       if (err != ESP_OK) {
         ESP_LOGI("EspUsbHost", "usb_host_device_info() err=%x", err);
       }
+      usbHost->_configCallback(&dev_info);
 
       const usb_device_desc_t *dev_desc;
       err = usb_host_get_device_descriptor(usbHost->deviceHandle, &dev_desc);
       if (err != ESP_OK) {
         ESP_LOGI("EspUsbHost", "usb_host_get_device_descriptor() err=%x", err);
       }
+      usbHost->_configCallback(dev_desc);
 
       const usb_config_desc_t *config_desc;
       err = usb_host_get_active_config_descriptor(usbHost->deviceHandle, &config_desc);
@@ -54,16 +56,31 @@ void EspUsbHost::_clientEventCallback(const usb_host_client_event_msg_t *eventMs
       }
 
       usbHost->_configCallback(config_desc);
+
+      if(usbHost->isReady())
+        usbHost->onNew(&dev_info, dev_desc);
+
       break;
 
     case USB_HOST_CLIENT_EVENT_DEV_GONE:
       ESP_LOGI("EspUsbHost", "USB_HOST_CLIENT_EVENT_DEV_GONE dev_gone.dev_hdl=%x", eventMsg->dev_gone.dev_hdl);
+      usbHost->onGone(&eventMsg->dev_gone.dev_hdl);
+      usbHost->onGone();
+      usb_host_device_close(usbHost->clientHandle, usbHost->deviceHandle);
       break;
 
     default:
       ESP_LOGI("EspUsbHost", "clientEventCallback() default %d", eventMsg->event);
       break;
   }
+}
+
+void EspUsbHost::_configCallback(const usb_device_info_t *dev_info) {
+  this->onConfig(dev_info);
+}
+
+void EspUsbHost::_configCallback(const usb_device_desc_t *dev_desc) {
+  this->onConfig(dev_desc);
 }
 
 void EspUsbHost::_configCallback(const usb_config_desc_t *config_desc) {

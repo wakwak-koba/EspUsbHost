@@ -5,9 +5,10 @@
 
 class EspUsbHostKeybord : public EspUsbHost {
 public:
-  bool isReady = false;
+  bool _isReady = false;
   uint8_t interval;
   unsigned long lastCheck;
+  usb_transfer_t *usbTransfer;
 
   void onConfig(const uint8_t bDescriptorType, const uint8_t *p) {
     ESP_LOGI("EspUsbHostKeybord", "bDescriptorType=%d", bDescriptorType);
@@ -48,7 +49,7 @@ public:
             this->usbTransfer->callback = this->_onKey;
             this->usbTransfer->context = this;
             interval = endpoint->bInterval;
-            isReady = true;
+            this->_isReady = true;
           }
         }
         break;
@@ -64,9 +65,11 @@ public:
 
   virtual void onKey(usb_transfer_t *transfer);
 
+  virtual bool isReady() { return this->_isReady; }
+  
   void task(void) {
     EspUsbHost::task();
-    if (this->isReady) {
+    if (this->isReady()) {
       unsigned long now = millis();
       if ((now - this->lastCheck) > this->interval) {
         this->lastCheck = now;
