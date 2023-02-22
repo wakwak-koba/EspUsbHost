@@ -2,6 +2,7 @@
 
 void EspUsbHost::begin(void) {
   const usb_host_config_t config = {
+    .skip_phy_setup = false,    
     .intr_flags = ESP_INTR_FLAG_LEVEL1,
   };
   esp_err_t err = usb_host_install(&config);
@@ -10,8 +11,8 @@ void EspUsbHost::begin(void) {
   }
 
   const usb_host_client_config_t client_config = {
-    .is_synchronous = false,
-    .max_num_event_msg = 5,
+    .is_synchronous = true,
+    .max_num_event_msg = 10,
     .async = {
       .client_event_callback = this->_clientEventCallback,
       .callback_arg = this,
@@ -61,7 +62,7 @@ void EspUsbHost::_clientEventCallback(const usb_host_client_event_msg_t *eventMs
         usbHost->onNew(&dev_info, dev_desc);
 
       break;
-
+    
     case USB_HOST_CLIENT_EVENT_DEV_GONE:
       ESP_LOGI("EspUsbHost", "USB_HOST_CLIENT_EVENT_DEV_GONE dev_gone.dev_hdl=%x", eventMsg->dev_gone.dev_hdl);
       usbHost->onGone(&eventMsg->dev_gone.dev_hdl);
@@ -84,6 +85,19 @@ void EspUsbHost::_configCallback(const usb_device_desc_t *dev_desc) {
 }
 
 void EspUsbHost::_configCallback(const usb_config_desc_t *config_desc) {
+  ESP_LOGI("", "bLength: %d", config_desc->bLength);
+  ESP_LOGI("", "bDescriptorType(config): %d", config_desc->bDescriptorType);
+  ESP_LOGI("", "wTotalLength: %d", config_desc->wTotalLength);
+  ESP_LOGI("", "bNumInterfaces: %d", config_desc->bNumInterfaces);
+  ESP_LOGI("", "bConfigurationValue: %d", config_desc->bConfigurationValue);
+  ESP_LOGI("", "iConfiguration: %d", config_desc->iConfiguration);
+  ESP_LOGI("", "bmAttributes(%s%s%s): 0x%02x",
+      (config_desc->bmAttributes & USB_BM_ATTRIBUTES_SELFPOWER)?"Self Powered":"",
+      (config_desc->bmAttributes & USB_BM_ATTRIBUTES_WAKEUP)?", Remote Wakeup":"",
+      (config_desc->bmAttributes & USB_BM_ATTRIBUTES_BATTERY)?", Battery Powered":"",
+      config_desc->bmAttributes);
+  ESP_LOGI("", "bMaxPower: %d = %d mA", config_desc->bMaxPower, config_desc->bMaxPower*2);    
+
   const uint8_t *p = &config_desc->val[0];
   uint8_t bLength;
   for (int i = 0; i < config_desc->wTotalLength; i += bLength, p += bLength) {

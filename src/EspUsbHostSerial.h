@@ -16,7 +16,7 @@ public:
       if ((now - this->lastCheck) > this->interval) {
         this->lastCheck = now;
         esp_err_t err = usb_host_transfer_submit(this->usbTransfer_recv);
-        if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
+        if (err != ESP_OK && err != ESP_ERR_NOT_FINISHED && err != ESP_ERR_INVALID_STATE) {
           ESP_LOGI("EspUsbHostSerial", "usb_host_transfer_submit() err=%x", err);
         }
       }
@@ -45,8 +45,8 @@ protected:
   usb_transfer_t *usbTransfer_recv = nullptr;
   usb_transfer_t *usbTransfer_send = nullptr;
   bool device = false;
-  int16_t bInterfaceNumber_acm = -1;
-  int16_t bInterfaceNumber_cdc = -1;
+  int16_t InterfaceNumber_acm = -1;
+  int16_t InterfaceNumber_cdc = -1;
   
   uint16_t Vendor = 0x0000;
   uint16_t Product = 0x0000;
@@ -89,7 +89,7 @@ protected:
             if (err != ESP_OK) {
               ESP_LOGI("EspUsbHostSerial", "usb_host_interface_claim() err=%x", err);
             } else {
-              this->bInterfaceNumber_acm = intf->bInterfaceNumber;
+              this->InterfaceNumber_acm = intf->bInterfaceNumber;
               ESP_LOGI("EspUsbHostSerial", "bInterfaceNumber_acm=%d", intf->bInterfaceNumber);
             }
           }
@@ -99,7 +99,7 @@ protected:
             if (err != ESP_OK) {
               ESP_LOGI("EspUsbHostSerial", "usb_host_interface_claim() err=%x", err);
             } else {
-              this->bInterfaceNumber_cdc = intf->bInterfaceNumber;
+              this->InterfaceNumber_cdc = intf->bInterfaceNumber;
               ESP_LOGI("EspUsbHostSerial", "bInterfaceNumber_cdc=%d", intf->bInterfaceNumber);
             }
           }
@@ -113,7 +113,7 @@ protected:
           ESP_LOGI("EspUsbHostSerial", "bDescriptorType=%d bEndpointAddress=%02x bmAttributes=%02x wMaxPacketSize=%d", bDescriptorType, endpoint->bEndpointAddress, endpoint->bmAttributes, endpoint->wMaxPacketSize);
 
           esp_err_t err;
-          if (bInterfaceNumber_acm >= 0 && !this->usbTransfer_acm  && ((endpoint->bmAttributes & USB_BM_ATTRIBUTES_XFERTYPE_MASK) == USB_BM_ATTRIBUTES_XFER_INT) && (endpoint->bEndpointAddress & USB_B_ENDPOINT_ADDRESS_EP_DIR_MASK)) {
+          if (this->InterfaceNumber_acm >= 0 && !this->usbTransfer_acm  && ((endpoint->bmAttributes & USB_BM_ATTRIBUTES_XFERTYPE_MASK) == USB_BM_ATTRIBUTES_XFER_INT) && (endpoint->bEndpointAddress & USB_B_ENDPOINT_ADDRESS_EP_DIR_MASK)) {
             err = usb_host_transfer_alloc(endpoint->wMaxPacketSize, 0, &this->usbTransfer_acm);
             if (err != ESP_OK) {
               this->usbTransfer_acm = NULL;
@@ -128,7 +128,7 @@ protected:
             ESP_LOGI("EspUsbHostSerial", "usbTransfer_acm");
           }
 
-          if (bInterfaceNumber_cdc >= 0 && !this->usbTransfer_recv && ((endpoint->bmAttributes & USB_BM_ATTRIBUTES_XFERTYPE_MASK) == USB_BM_ATTRIBUTES_XFER_BULK) && (endpoint->bEndpointAddress & USB_B_ENDPOINT_ADDRESS_EP_DIR_MASK)) {
+          if (this->InterfaceNumber_cdc >= 0 && !this->usbTransfer_recv && ((endpoint->bmAttributes & USB_BM_ATTRIBUTES_XFERTYPE_MASK) == USB_BM_ATTRIBUTES_XFER_BULK) && (endpoint->bEndpointAddress & USB_B_ENDPOINT_ADDRESS_EP_DIR_MASK)) {
             err = usb_host_transfer_alloc(endpoint->wMaxPacketSize, 0, &this->usbTransfer_recv);
             if (err != ESP_OK) {
               this->usbTransfer_recv = NULL;
@@ -144,7 +144,7 @@ protected:
             ESP_LOGI("EspUsbHostSerial", "usbTransfer_recv");
           }
 
-          if (bInterfaceNumber_cdc >= 0 && !this->usbTransfer_send && ((endpoint->bmAttributes & USB_BM_ATTRIBUTES_XFERTYPE_MASK) == USB_BM_ATTRIBUTES_XFER_BULK) && !(endpoint->bEndpointAddress & USB_B_ENDPOINT_ADDRESS_EP_DIR_MASK)) {
+          if (this->InterfaceNumber_cdc >= 0 && !this->usbTransfer_send && ((endpoint->bmAttributes & USB_BM_ATTRIBUTES_XFERTYPE_MASK) == USB_BM_ATTRIBUTES_XFER_BULK) && !(endpoint->bEndpointAddress & USB_B_ENDPOINT_ADDRESS_EP_DIR_MASK)) {
             err = usb_host_transfer_alloc(endpoint->wMaxPacketSize, 0, &this->usbTransfer_send);
             if (err != ESP_OK) {
               this->usbTransfer_send = NULL;
@@ -178,10 +178,10 @@ protected:
       usb_host_transfer_free(this->usbTransfer_recv);
       this->usbTransfer_recv = nullptr;
     }
-    usb_host_interface_release(this->clientHandle, this->deviceHandle, this->bInterfaceNumber_cdc);
-    bInterfaceNumber_cdc = -1;
-    usb_host_interface_release(this->clientHandle, this->deviceHandle, this->bInterfaceNumber_acm);
-    bInterfaceNumber_acm = -1;
+    usb_host_interface_release(this->clientHandle, this->deviceHandle, this->InterfaceNumber_cdc);
+    this->InterfaceNumber_cdc = -1;
+    usb_host_interface_release(this->clientHandle, this->deviceHandle, this->InterfaceNumber_acm);
+    this->InterfaceNumber_acm = -1;
   }
   
   virtual void onReceive(usb_transfer_t *transfer) { if(onReceiveCB) onReceiveCB(transfer); }
@@ -191,8 +191,7 @@ protected:
 private:
   static void _onReceive(usb_transfer_t *transfer) {
     if (transfer->status == 0 && transfer->actual_num_bytes > 0) {
-      EspUsbHostSerial *usbHost = (EspUsbHostSerial*)transfer->context;
-      usbHost->onReceive(transfer);
+      ((EspUsbHostSerial*)transfer->context)->onReceive(transfer);
     }
   }
   
