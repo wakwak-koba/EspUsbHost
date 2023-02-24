@@ -30,7 +30,7 @@ protected:
   usb_transfer_t *usbTransfer_desc = nullptr;
   uint8_t InterfaceProtocol = 0;
   int16_t InterfaceNumber = -1;
-  uint8_t ReportLength = 0;
+  uint16_t ReportLength = 0;
   
   EspUsbHostHID(uint8_t InterfaceProtocol) : InterfaceProtocol(InterfaceProtocol) {};
   
