@@ -30,6 +30,7 @@ protected:
   usb_transfer_t *usbTransfer_desc = nullptr;
   uint8_t InterfaceProtocol = 0;
   int16_t InterfaceNumber = -1;
+  uint8_t ReportLength = 0;
   
   EspUsbHostHID(uint8_t InterfaceProtocol) : InterfaceProtocol(InterfaceProtocol) {};
   
@@ -95,7 +96,8 @@ protected:
                  hid_desc->bCountryCode,
                  hid_desc->bNumDescriptors,
                  hid_desc->bReportType,
-                 hid_desc->wReportLength);      
+                 hid_desc->wReportLength);
+          ReportLength = hid_desc->wReportLength;
         }
         break;
 
@@ -106,21 +108,21 @@ protected:
   }
   
   virtual void onConfig(const usb_config_desc_t *config_desc) override {
-    if(this->InterfaceNumber < 0)
+    if(!ReportLength)
       return;
     
     if(!this->usbTransfer_desc)
       usb_host_transfer_alloc(72, 0, &this->usbTransfer_desc);
     
-    this->usbTransfer_desc->num_bytes = 72;
+    this->usbTransfer_desc->num_bytes = 8 + ReportLength;
     this->usbTransfer_desc->data_buffer[0] = 0x81; //request type
     this->usbTransfer_desc->data_buffer[1] = 0x06; //GET_DESCRIPTOR
     this->usbTransfer_desc->data_buffer[2] = 0x00; //descriptor index 0
     this->usbTransfer_desc->data_buffer[3] = 0x22; //HID Report
     this->usbTransfer_desc->data_buffer[4] = 0;    //interface 0
     this->usbTransfer_desc->data_buffer[5] = 0;    //interface 0
-    this->usbTransfer_desc->data_buffer[6] = 64;   //length 64
-    this->usbTransfer_desc->data_buffer[7] = 0;    //length 0
+    this->usbTransfer_desc->data_buffer[6] = ReportLength;  //length 64
+    this->usbTransfer_desc->data_buffer[7] = 0;             //length 0
     this->usbTransfer_desc->device_handle = deviceHandle;
     this->usbTransfer_desc->bEndpointAddress = 0x00;
     this->usbTransfer_desc->callback = this->_onReport;
