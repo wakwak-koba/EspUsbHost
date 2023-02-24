@@ -1,13 +1,13 @@
-#include "EspUsbHostSerial.h"
+#include "EspUsbHostSerial_FTDI.h"
 
-class SerialBarcodeScanner : public EspUsbHostSerial {
+class SerialFTDI : public EspUsbHostSerial_FTDI {
   String value;
   
-  virtual void onNew() override {
+  void onNew() override {
     Serial.println(("Manufacturer:" + getManufacturer()).c_str());
     Serial.println(("Product:" + getProduct()).c_str());
   }
-  virtual void onReceive(const uint8_t *data, const size_t length) override {
+  void onReceive(const uint8_t *data, const size_t length) override {
     for(int i = 0; i < length; i++) {
       if(data[i] >= 0x20)
         value += (char)data[i];
@@ -17,16 +17,16 @@ class SerialBarcodeScanner : public EspUsbHostSerial {
       }
     }
   }
-  virtual void onGone() {
+  void onGone() override {
     Serial.println("disconnected");
   }
 };
 
-SerialBarcodeScanner usbDev;
+SerialFTDI usbDev;
 
 void setup() {
   Serial.begin(115200);
-  usbDev.begin();
+  usbDev.begin(115200);
 }
 
 void loop()

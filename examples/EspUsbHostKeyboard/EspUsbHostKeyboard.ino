@@ -2,9 +2,22 @@
 
 class MyEspUsbHostKeyboard : public EspUsbHostKeyboard {
 public:
-  void onReceive(usb_transfer_t *transfer) {
-    uint8_t *const p = transfer->data_buffer;
-    Serial.printf("onKey %02x %02x %02x %02x %02x %02x %02x %02x\n", p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+  void onNew() override {
+    Serial.println("connected");
+    Serial.println(("Manufacturer:" + getManufacturer()).c_str());
+    Serial.println(("Product:" + getProduct()).c_str());
+    Serial.print("ReportDescriptor:");
+    for(int i = 0; i < this->reportDescriptorSize; i++) {
+      if(!(i % 16))
+        Serial.println();
+      Serial.printf(" %02x", this->reportDescriptor[i]);
+    }
+    Serial.println();
+  }
+  void onKey(const uint8_t *data, const size_t length) override {
+    for(int i = 0; i < length; i++)
+      Serial.printf(" %02x", data[i]);
+    Serial.println();
   }
 };
 

@@ -2,16 +2,18 @@
 
 class MyEspUsbHostMouse : public EspUsbHostMouse {
 public:
-  void onReceive(usb_transfer_t *transfer) {
-    Serial.printf("actual_num_bytes=%d", transfer->actual_num_bytes);
-    for(int i = 0; i < transfer->actual_num_bytes; i++)
-      Serial.printf(" %02x", transfer->data_buffer[i]);
+  void onMouse(const uint8_t *data, const size_t length) override {
+    Serial.printf("length=%d", length);
+    for(int i = 0; i < length; i++)
+      Serial.printf(" %02x", data[i]);
     Serial.println();
   }
-  virtual void onNew(const usb_device_info_t *dev_info, const usb_device_desc_t *dev_desc) {
+  virtual void onNew() override {
     Serial.println("connected");
+    Serial.println(("Manufacturer:" + getManufacturer()).c_str());
+    Serial.println(("Product:" + getProduct()).c_str());
   }
-  virtual void onGone() {
+  virtual void onGone() override {
     Serial.println("disconnected");
   }
 };
