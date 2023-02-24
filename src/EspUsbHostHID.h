@@ -121,8 +121,8 @@ protected:
     this->usbTransfer_desc->data_buffer[3] = 0x22; //HID Report
     this->usbTransfer_desc->data_buffer[4] = 0;    //interface 0
     this->usbTransfer_desc->data_buffer[5] = 0;    //interface 0
-    this->usbTransfer_desc->data_buffer[6] = ReportLength;  //length 64
-    this->usbTransfer_desc->data_buffer[7] = 0;             //length 0
+    this->usbTransfer_desc->data_buffer[6] = ReportLength & 0xFF; //length 64
+    this->usbTransfer_desc->data_buffer[7] = ReportLength >> 8;   //length 0
     this->usbTransfer_desc->device_handle = deviceHandle;
     this->usbTransfer_desc->bEndpointAddress = 0x00;
     this->usbTransfer_desc->callback = this->_onReport;
