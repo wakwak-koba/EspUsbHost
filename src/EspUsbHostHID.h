@@ -112,7 +112,7 @@ protected:
       return;
     
     if(!this->usbTransfer_desc)
-      usb_host_transfer_alloc(72, 0, &this->usbTransfer_desc);
+      usb_host_transfer_alloc(8 + ReportLength, 0, &this->usbTransfer_desc);
     
     this->usbTransfer_desc->num_bytes = 8 + ReportLength;
     this->usbTransfer_desc->data_buffer[0] = 0x81; //request type
@@ -128,6 +128,7 @@ protected:
     this->usbTransfer_desc->callback = this->_onReport;
     this->usbTransfer_desc->context = this;
 
+	ESP_LOGI("", "ReportLength:%d", ReportLength);
     esp_err_t err = usb_host_transfer_submit_control(clientHandle, this->usbTransfer_desc);
     if(err != ESP_OK) {
       ESP_LOGI("EspUsbHostHID","attempting control %s", esp_err_to_name(err));
