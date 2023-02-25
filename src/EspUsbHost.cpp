@@ -151,25 +151,36 @@ esp_err_t EspUsbHost::submit_control(const uint8_t requestType, const uint8_t bR
   return submit_control(requestType, bRequest, wValue, 0x0000, 0x0000, nullptr);
 }
 esp_err_t EspUsbHost::submit_control(const uint8_t requestType, const uint8_t bRequest, const uint16_t wValue, const uint16_t wIndex, const uint16_t wLength, const void *data) {
-  usb_transfer_t *usbTransfer_cmd;
-  usb_host_transfer_alloc(8 + wLength, 0, &usbTransfer_cmd);
+  return submit_control(requestType, bRequest, wValue, wIndex, wLength, data, nullptr);
+}
 
-  usbTransfer_cmd->num_bytes = 8;
-  usbTransfer_cmd->data_buffer[0] = requestType;
-  usbTransfer_cmd->data_buffer[1] = bRequest;
-  usbTransfer_cmd->data_buffer[2] = wValue & 0xff;
-  usbTransfer_cmd->data_buffer[3] = wValue >> 8;
-  usbTransfer_cmd->data_buffer[4] = wIndex & 0xff;
-  usbTransfer_cmd->data_buffer[5] = wIndex >> 8;
-  usbTransfer_cmd->data_buffer[6] = wLength & 0xff;
-  usbTransfer_cmd->data_buffer[7] = wLength >> 8;
+esp_err_t EspUsbHost::submit_control(const uint8_t requestType, const uint8_t bRequest, const uint16_t wValue, const uint16_t wIndex, const uint16_t wLength, const void *data, usb_transfer_cb_t callback) {
+  usb_transfer_t *usbTransfer;
+  usb_host_transfer_alloc(8 + wLength, 0, &usbTransfer);
+
+  usbTransfer->num_bytes = 8 + wLength;
+  usbTransfer->data_buffer[0] = requestType;
+  usbTransfer->data_buffer[1] = bRequest;
+  usbTransfer->data_buffer[2] = wValue & 0xff;
+  usbTransfer->data_buffer[3] = wValue >> 8;
+  usbTransfer->data_buffer[4] = wIndex & 0xff;
+  usbTransfer->data_buffer[5] = wIndex >> 8;
+  usbTransfer->data_buffer[6] = wLength & 0xff;
+  usbTransfer->data_buffer[7] = wLength >> 8;
   if(wLength > 0 && data)
-    memcpy(&usbTransfer_cmd->data_buffer[8], data, wLength);
+    memcpy(&usbTransfer->data_buffer[8], data, wLength);
   
-  usbTransfer_cmd->device_handle = deviceHandle;
-  usbTransfer_cmd->bEndpointAddress = 0x00;
-    usbTransfer_cmd->callback = [](usb_transfer_t *transfer) {usb_host_transfer_free(transfer);};
-  usbTransfer_cmd->context = this;
+  usbTransfer->device_handle = deviceHandle;
+  usbTransfer->bEndpointAddress = 0x00;
+  if(callback)
+    usbTransfer->callback = callback;
+  else
+    usbTransfer->callback = [](usb_transfer_t *transfer) { usb_host_transfer_free(transfer); };
+  usbTransfer->context = this;
 
-  return usb_host_transfer_submit_control(clientHandle, usbTransfer_cmd);
+  esp_err_t err = usb_host_transfer_submit_control(clientHandle, usbTransfer);
+  if(err != ESP_OK) {
+    ESP_LOGI("EspUsbHost","submit_control %s", esp_err_to_name(err));
+  }
+  return err;
 }

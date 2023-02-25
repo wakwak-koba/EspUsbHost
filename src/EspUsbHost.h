@@ -32,6 +32,7 @@ protected:
   virtual bool isReady() { return false; }
           esp_err_t submit_control(const uint8_t requestType, const uint8_t bRequest, const uint16_t wValue);
           esp_err_t submit_control(const uint8_t requestType, const uint8_t bRequest, const uint16_t wValue, const uint16_t wIndex, const uint16_t wLength, const void *data);
+          esp_err_t submit_control(const uint8_t requestType, const uint8_t bRequest, const uint16_t wValue, const uint16_t wIndex, const uint16_t wLength, const void *data, usb_transfer_cb_t callback);
   
 private:
   uint32_t eventFlags;

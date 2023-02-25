@@ -3,11 +3,11 @@
 
 #include "EspUsbHost.h"
 #include <class/hid/hid.h>
+#include <vector>
 
 class EspUsbHostHID : public EspUsbHost {
 public:
-  uint8_t *reportDescriptor = nullptr;
-  size_t reportDescriptorSize = 0;
+  std::vector<uint8_t> reportDescriptor;
   
   virtual void task(void) override {
     EspUsbHost::task();
@@ -23,6 +23,11 @@ public:
     }
   }
   
+  virtual void setLED(bool numLock, bool capsLock, bool scrollLock, bool compose = false, bool kana = false) {
+    uint8_t data = (numLock ? 0x01 : 0x00) | (capsLock ? 0x02 : 0x00) | (scrollLock ? 0x04 : 0x00 | (compose ? 0x08 : 0x00) | (kana ? 0x10 : 0x00) );
+    submit_control(0x21, 0x09, 0x0201, 0x0000, 1, &data);
+  }
+  
 protected:
   uint8_t interval;
   unsigned long lastCheck;
@@ -30,7 +35,6 @@ protected:
   usb_transfer_t *usbTransfer_desc = nullptr;
   uint8_t InterfaceProtocol = 0;
   int16_t InterfaceNumber = -1;
-  uint16_t ReportLength = 0;
   
   EspUsbHostHID(uint8_t InterfaceProtocol) : InterfaceProtocol(InterfaceProtocol) {};
   
@@ -97,7 +101,13 @@ protected:
                  hid_desc->bNumDescriptors,
                  hid_desc->bReportType,
                  hid_desc->wReportLength);
-          ReportLength = hid_desc->wReportLength;
+          
+          submit_control(0x81, 0x06, 0x2200, 0x0000, hid_desc->wReportLength, nullptr, [](usb_transfer_t *transfer) {
+            if (transfer->status == ESP_OK && transfer->actual_num_bytes > 8) {
+              ((EspUsbHostHID*)transfer->context)->reportDescriptor.assign(transfer->data_buffer + 8, transfer->data_buffer + transfer->actual_num_bytes);
+            }
+            usb_host_transfer_free(transfer);
+          });
         }
         break;
 
@@ -107,72 +117,31 @@ protected:
     }
   }
   
-  virtual void onConfig(const usb_config_desc_t *config_desc) override {
-    if(!ReportLength)
-      return;
-    
-    if(!this->usbTransfer_desc)
-      usb_host_transfer_alloc(8 + ReportLength, 0, &this->usbTransfer_desc);
-    
-    this->usbTransfer_desc->num_bytes = 8 + ReportLength;
-    this->usbTransfer_desc->data_buffer[0] = 0x81; //request type
-    this->usbTransfer_desc->data_buffer[1] = 0x06; //GET_DESCRIPTOR
-    this->usbTransfer_desc->data_buffer[2] = 0x00; //descriptor index 0
-    this->usbTransfer_desc->data_buffer[3] = 0x22; //HID Report
-    this->usbTransfer_desc->data_buffer[4] = 0;    //interface 0
-    this->usbTransfer_desc->data_buffer[5] = 0;    //interface 0
-    this->usbTransfer_desc->data_buffer[6] = ReportLength & 0xFF; //length 64
-    this->usbTransfer_desc->data_buffer[7] = ReportLength >> 8;   //length 0
-    this->usbTransfer_desc->device_handle = deviceHandle;
-    this->usbTransfer_desc->bEndpointAddress = 0x00;
-    this->usbTransfer_desc->callback = this->_onReport;
-    this->usbTransfer_desc->context = this;
-
-	ESP_LOGI("", "ReportLength:%d", ReportLength);
-    esp_err_t err = usb_host_transfer_submit_control(clientHandle, this->usbTransfer_desc);
-    if(err != ESP_OK) {
-      ESP_LOGI("EspUsbHostHID","attempting control %s", esp_err_to_name(err));
-    }
-  }
-  
   void onGone(const usb_device_handle_t *dev_hdl) override {
     if(this->usbTransfer) {
       usb_host_endpoint_clear(*dev_hdl, usbTransfer->bEndpointAddress);
       usb_host_transfer_free(this->usbTransfer);
       this->usbTransfer = nullptr;
     }
-    if(this->usbTransfer_desc) {
-      usb_host_transfer_free(this->usbTransfer_desc);
-      this->usbTransfer_desc = nullptr;
-      this->reportDescriptor = nullptr;
-      this->reportDescriptorSize = 0;
-    }
     usb_host_interface_release(this->clientHandle, this->deviceHandle, this->InterfaceNumber);
     this->InterfaceNumber = -1;
-  }
-
-  virtual void onReport(usb_transfer_t *transfer) {
-    if(transfer->actual_num_bytes > 8) {
-      reportDescriptorSize = transfer->actual_num_bytes - 8;
-      reportDescriptor = transfer->data_buffer + 8;
-    }
   }
   
   virtual void onReceive(const uint8_t *data, const size_t length) {};
   virtual void onReceive(usb_transfer_t *transfer) {
-    onReceive((uint8_t *)transfer->data_buffer, transfer->actual_num_bytes);
-  }
-  virtual bool isReady() override { return usbTransfer && reportDescriptor && reportDescriptorSize; }
-
-private:
-  static void _onReceive(usb_transfer_t *transfer) {
-    if (transfer->status == 0 && transfer->actual_num_bytes > 0) {
-      ((EspUsbHostHID*)transfer->context)->onReceive(transfer);
+    if(lastReceived.size() != transfer->actual_num_bytes || memcmp((void *)lastReceived.data(), transfer->data_buffer, transfer->actual_num_bytes)) {
+      onReceive((uint8_t *)transfer->data_buffer, transfer->actual_num_bytes);
+      lastReceived.assign(transfer->data_buffer, transfer->data_buffer + transfer->actual_num_bytes);
     }
   }
-  static void _onReport(usb_transfer_t *transfer) {
-    if (transfer->status == 0 && transfer->actual_num_bytes > 0) {
-      ((EspUsbHostHID*)transfer->context)->onReport(transfer);
+  virtual bool isReady() override { return usbTransfer && reportDescriptor.size(); }
+
+private:
+  std::vector<uint8_t> lastReceived;
+  
+  static void _onReceive(usb_transfer_t *transfer) {
+    if (transfer->status == ESP_OK && transfer->actual_num_bytes) {
+      ((EspUsbHostHID*)transfer->context)->onReceive(transfer);
     }
   }
 };

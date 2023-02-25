@@ -45,20 +45,9 @@ protected:
     esp_err_t err;
 
     err = submit_control(0x40, 0x00, 0x0000);   // reset
-    if(err != ESP_OK)
-      ESP_LOGI("","submit_control %s", esp_err_to_name(err));
-
     err = submit_control(0x40, 0x00, 0x0001);   // clear rx
-    if(err != ESP_OK)
-      ESP_LOGI("","submit_control %s", esp_err_to_name(err));
-
     err = submit_control(0x40, 0x00, 0x0002);   // clear tx
-    if(err != ESP_OK)
-      ESP_LOGI("","submit_control %s", esp_err_to_name(err));
-
     err = submit_control(0x40, 0x02, 0x0000);   // no-flow
-    if(err != ESP_OK)
-      ESP_LOGI("","attempting control %s", esp_err_to_name(err));
 
     uint16_t baud;
     switch(this->baudSpeed)
@@ -117,14 +106,8 @@ protected:
       default:
         baud = 0x4138;    // 9600bps
     }
-
     err = submit_control(0x40, 0x03, baud);
-    if(err != ESP_OK)
-      ESP_LOGI("","submit_control %s", esp_err_to_name(err));
-
     err = submit_control(0x40, 0x04, 0x0008);   // 8bit nonparity 1bit
-    if(err != ESP_OK)
-      ESP_LOGI("","submit_control %s", esp_err_to_name(err));
    
     initialized = true;
   }
