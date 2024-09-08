@@ -136,20 +136,21 @@ void EspUsbHost::task(void) {
 
 std::string EspUsbHost::getManufacturer() {
   std::string result;
-  if(deviceInfo.str_desc_manufacturer->bLength > 4)
+  if(deviceInfo.str_desc_manufacturer && deviceInfo.str_desc_manufacturer->bLength > 4)
     result = utf::toString((char16_t *)deviceInfo.str_desc_manufacturer->wData, deviceInfo.str_desc_manufacturer->bLength / 2 - 1);
   return result;
 }
 std::string EspUsbHost::getProduct() {
   std::string result;
-  if(deviceInfo.str_desc_product     ->bLength > 4)
-    result = utf::toString((char16_t *)deviceInfo.str_desc_product     ->wData, deviceInfo.str_desc_product     ->bLength / 2 - 1);
+  if(deviceInfo.str_desc_product     && deviceInfo.str_desc_product     ->bLength > 4)
+      result = utf::toString((char16_t *)deviceInfo.str_desc_product     ->wData, deviceInfo.str_desc_product     ->bLength / 2 - 1);
   return result;
 }
 std::string EspUsbHost::getSerialNum() {
   std::string result;
   if(deviceInfo.str_desc_serial_num  ->bLength > 4)
-    result = utf::toString((char16_t *)deviceInfo.str_desc_serial_num  ->wData, deviceInfo.str_desc_serial_num  ->bLength / 2 - 1);
+//  result = utf::toString((char16_t *)deviceInfo.str_desc_serial_num  ->wData, deviceInfo.str_desc_serial_num  ->bLength / 2 - 1);
+    result = getUsbDescString(deviceInfo.str_desc_serial_num);
   return result;
 }
 
