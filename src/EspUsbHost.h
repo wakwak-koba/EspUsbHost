@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <usb/usb_host.h>
+#include <string>
 
 class EspUsbHost {
 public:
