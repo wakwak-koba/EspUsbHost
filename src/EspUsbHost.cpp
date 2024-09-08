@@ -149,8 +149,7 @@ std::string EspUsbHost::getProduct() {
 std::string EspUsbHost::getSerialNum() {
   std::string result;
   if(deviceInfo.str_desc_serial_num  ->bLength > 4)
-//  result = utf::toString((char16_t *)deviceInfo.str_desc_serial_num  ->wData, deviceInfo.str_desc_serial_num  ->bLength / 2 - 1);
-    result = getUsbDescString(deviceInfo.str_desc_serial_num);
+      result = utf::toString((char16_t *)deviceInfo.str_desc_serial_num  ->wData, deviceInfo.str_desc_serial_num  ->bLength / 2 - 1);
   return result;
 }
 
